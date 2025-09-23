@@ -1,8 +1,9 @@
-use clap::{Parser, Subcommand, CommandFactory};
+use clap::{Parser, Subcommand, CommandFactory, Args};
 use clap_complete::{generate, shells::Zsh};
 use colored::*;
 use tabled::{Table, Tabled};
 use serde::{Deserialize, Serialize};
+use reqwest;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -13,16 +14,23 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Add {
-        amount: f64,
-        category: String,
-        message: Option<String>,
-        date: Option<String>,
-        latitude: Option<f64>,
-        longitude: Option<f64>,
-    },
+    Add(AddArgs),
     List,
     Completions,
+}
+
+#[derive(Args)]
+struct AddArgs {
+    amount: f64,
+    category: String,
+    #[arg(long)]
+    message: Option<String>,
+    #[arg(long)]
+    date: Option<String>,
+    #[arg(long)]
+    latitude: Option<f64>,
+    #[arg(long)]
+    longitude: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Tabled)]
@@ -38,6 +46,7 @@ struct Expense {
     #[tabled(display_with = "option_f64_to_string")]
     longitude: Option<f64>,
 }
+
 fn option_to_string(opt: &Option<String>) -> String {
     opt.clone().unwrap_or_default()
 }
@@ -51,14 +60,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Add { amount, category, message, date, latitude, longitude } => {
+        Commands::Add(args) => {
             let expense = serde_json::json!({
-                "date": date.unwrap_or_else(|| "2025-08-03".to_string()),
-                "amount": amount,
-                "category": category,
-                "message": message,
-                "latitude": latitude,
-                "longitude": longitude,
+                "date": args.date.unwrap_or_else(|| "2025-08-03".to_string()),
+                "amount": args.amount,
+                "category": args.category,
+                "message": args.message,
+                "latitude": args.latitude,
+                "longitude": args.longitude,
                 "image_url": null
             });
 
@@ -91,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Completions => {
-            generate(Zsh, &mut Cli::command(), "expense-cli", &mut std::io::stdout());
+            generate(Zsh, &mut Cli::command(), "money_cli", &mut std::io::stdout());
         }
     }
 
